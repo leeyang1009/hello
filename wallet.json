@@ -1,0 +1,64 @@
+{
+  "wallet": {
+    "name": [
+      "FILBANK",
+      "Hawk",
+      "EastPower"
+    ],
+    "balance": [
+      {
+        "type": "BigNumber",
+        "hex": "0x23a9639f6e1d1fd335"
+      },
+      {
+        "type": "BigNumber",
+        "hex": "0x5353c0afc7661c3960"
+      },
+      {
+        "type": "BigNumber",
+        "hex": "0x916e95e9bee9fc1bcbe4"
+      }
+    ],
+    "address": [
+      "0xcf7e5202fdd8249fbbb26ba0d6c007d989425a06",
+      "0x86ff8d0baccf58a1f3efeeb66f112e85ae4f2c64",
+      "0xb6697fb98bae29df7750a43040d488856cfbfeb7"
+    ],
+    "decimal": [
+      18,
+      18,
+      18
+    ],
+    "amountbought": [
+      "15",
+      "15",
+      15
+    ],
+    "liquidityused": [
+      "0x55d398326f99059ff775485246999027b3197955",
+      "0x55d398326f99059ff775485246999027b3197955",
+      "0x55d398326f99059ff775485246999027b3197955"
+    ],
+    "upper": [
+      30,
+      30,
+      30
+    ],
+    "lower": [
+      -15,
+      -15,
+      -15
+    ],
+    "profitpercoin": [
+      0,
+      4.605,
+      0
+    ],
+    "profit": -85.67040923214311
+  },
+  "upperpercent": 40,
+  "lowerpercent": -15,
+  "howmuch": 0.05,
+  "stop": true,
+  "sell": true
+}
