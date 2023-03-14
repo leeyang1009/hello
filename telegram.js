@@ -68,12 +68,11 @@ async function selling(name, bot) {
   //set delay interval
   await new Promise((resolve) => setTimeout(resolve, msTime));
 }
-async function successfulBuy(name, chart, bot) {
+
+async function successfulBuy(name, bot) {
   const msTime = 5000;
   var msg = `Successfully bought ${name}...`;
-  var msg2 = `Chart:\n${chart} `;
   bot.sendMessage(chatId, msg);
-  bot.sendMessage(chatId, msg2);
   //set delay interval
   await new Promise((resolve) => setTimeout(resolve, msTime));
 }

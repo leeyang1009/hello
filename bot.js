@@ -26,13 +26,15 @@ const token = process.env.BOT_TOKEN;
 const chatId = process.env.CHAT_ID;
 const group1 = process.env.GROUP_1;
 const msTime = 5000;
-const bot = new TelegramBot(token, { polling: true });
+let bot = new TelegramBot(token, { polling: true});
 
 //AI GENERATON
 const openAi_KEY = process.env.AI_API_KEY;
+
 const configuration = new Configuration({
   apiKey: openAi_KEY,
 });
+
 const openai = new OpenAIApi(configuration);
 
 async function generateImage(prompt, id) {
@@ -398,6 +400,7 @@ const lowerPercentArr = [];
 const buyTaxArr = [];
 const sellTaxArr = [];
 const profitPerCoinArr = [];
+const coinURL = []
 let profit = 0;
 
 //BOT CONFIGURATIONS
@@ -428,11 +431,17 @@ async function sleep(ms) {
 }
 
 async function getNonce() {
-  try {
+  var loop_getNonce = true;
+
+  while(loop_getNonce){
+    try {
     var nonce = await provider.getTransactionCount(receiver);
+    loop_getNonce = false;
+
     return nonce;
-  } catch (error) {
-    console.log(`Error in getNonce`);
+    } catch (error) {
+      console.log(`Error in getNonce`);
+    }
   }
 }
 
@@ -459,7 +468,8 @@ async function insertToOurWallet(
   amountbought,
   liquidity,
   upper,
-  lower
+  lower,
+  url
 ) {
   try {
     readJson(
@@ -472,11 +482,12 @@ async function insertToOurWallet(
           walletBalanceArr.push(balance);
           walletAddressesArr.push(address);
           walletDecimalsArr.push(decimal);
-          amountBoughtArr.push(amountbought);
+          amountBoughtArr.push(parseFloat(amountbought));
           liquidityUsedArr.push(liquidity);
           upperPercentArr.push(upper);
           lowerPercentArr.push(lower);
           profitPerCoinArr.push(0);
+          coinURL.push(url);
 
           data.wallet.name.push(name);
           data.wallet.balance.push(balance);
@@ -487,6 +498,7 @@ async function insertToOurWallet(
           data.wallet.upper.push(upper);
           data.wallet.lower.push(lower);
           data.wallet.profitpercoin.push(0);
+          data.wallet.coinurl.push(url)
 
           fs.writeFile(
             "/home/leeharuto86/TrailStopLossBot/wallet.json",
@@ -526,6 +538,7 @@ async function removeFromOurWallet(name, profit, address) {
               upperPercentArr.splice(i, 1);
               lowerPercentArr.splice(i, 1);
               profitPerCoinArr.splice(i, 1);
+              coinURL.splice(i, 1);
 
               data.wallet.name.splice(i, 1);
               data.wallet.balance.splice(i, 1);
@@ -536,6 +549,7 @@ async function removeFromOurWallet(name, profit, address) {
               data.wallet.upper.splice(i, 1);
               data.wallet.lower.splice(i, 1);
               data.wallet.profitpercoin.splice(i, 1);
+              data.wallet.coinurl.splice(i, 1);
             }
           }
 
@@ -607,7 +621,7 @@ async function changeBalance(name, balance, newAmount) {
   }
 }
 
-async function halfBalance(name, newAmount, profitwbnb) {
+async function halfBalance(name, newAmount, profitwbnb, profit) {
   try {
     readJson(
       "/home/leeharuto86/TrailStopLossBot/wallet.json",
@@ -626,6 +640,8 @@ async function halfBalance(name, newAmount, profitwbnb) {
             }
           }
 
+          data.wallet.profit = parseFloat(profit);
+
           fs.writeFile(
             "/home/leeharuto86/TrailStopLossBot/wallet.json",
             JSON.stringify(data, null, 2),
@@ -634,7 +650,7 @@ async function halfBalance(name, newAmount, profitwbnb) {
                 console.log(err);
               } else {
                 console.log(
-                  "Successfully change the balance of the coin to half"
+                  "Successfully change the balance of the coin to 1/3"
                 );
               }
             }
@@ -668,6 +684,8 @@ async function remove(name) {
               liquidityUsedArr.splice(i, 1);
               upperPercentArr.splice(i, 1);
               lowerPercentArr.splice(i, 1);
+              profitPerCoinArr.splice(i, 1);
+              coinURL.splice(i, 1);
 
               data.wallet.name.splice(i, 1);
               data.wallet.balance.splice(i, 1);
@@ -677,10 +695,12 @@ async function remove(name) {
               data.wallet.liquidityused.splice(i, 1);
               data.wallet.upper.splice(i, 1);
               data.wallet.lower.splice(i, 1);
+              data.wallet.profitpercoin.splice(i, 1);
+              data.wallet.coinurl.splice(i, 1);
 
               var message = `You have removed: "${arrayName}" (WALLET DISPLAY)`;
 
-              bot.sendMessage(chatId, message, { disable_notification: true });
+              bot.sendMessage(chatId, message);
             }
           }
 
@@ -723,6 +743,7 @@ async function updateAll() {
               upperPercentArr.push(data.wallet.upper[i]);
               lowerPercentArr.push(data.wallet.lower[i]);
               profitPerCoinArr.push(data.wallet.profitpercoin[i]);
+              coinURL.push(data.wallet.coinurl[i]);
             }
 
             console.log("Updated values from wallet.json");
@@ -744,6 +765,66 @@ async function updateAll() {
   }
 }
 
+async function checkBalance(){
+  
+      for(var i = 0; i < walletBalanceArr.length; i++){
+
+        var address = walletAddressesArr[i];
+        var balanceToCompare = walletBalanceArr[i];
+        var tokenContract;
+        var tokenBalanceOfUser;
+        var contractName;
+        var loop_getBalance = true;
+
+        while(loop_getBalance){
+          try {
+             tokenContract = new ethers.Contract(address, BEP20_ABI, wallet);
+             contractName = await tokenContract.name();
+             tokenBalanceOfUser = await tokenContract.balanceOf(receiver);
+             loop_getBalance = false;
+          } catch (error) {
+            console.log("Error in loop_getBalance in checkBalance function")
+          }
+        }
+
+        var balance1 = ethers.utils.formatUnits(tokenBalanceOfUser, 18);
+        var balance2 = ethers.utils.formatUnits(balanceToCompare, 18);
+
+        if(balance1 != balance2 && balance1 != 0){
+            try {
+              readJson(
+                "/home/leeharuto86/TrailStopLossBot/wallet.json",
+                (error, data) => {
+                  if (error) {
+                    console.log(error);
+                  } else {
+                    walletBalanceArr[arrayNo] = tokenBalanceOfUser;
+                    data.wallet.balance[arrayNo] = tokenBalanceOfUser;
+
+                    fs.writeFile(
+                      "/home/leeharuto86/TrailStopLossBot/wallet.json",
+                      JSON.stringify(data, null, 2),
+                      (err) => {
+                        if (err) {
+                          console.log(err);
+                        } else {
+                          console.log(`Change new balance of ${contractName}`)
+                        }
+                      }
+                    );
+                  }
+                }
+              );
+              
+            } catch (error) {
+              console.log(`Error in check balance`);
+            }
+          } else if (balance1 == 0){
+            await remove(contractName);
+          }
+      }
+}
+
 async function buyToken(address, pair, autotrading) {
   try {
     var auto = autotrading;
@@ -763,6 +844,7 @@ async function buyToken(address, pair, autotrading) {
     var isHoneypot = false;
     var buyTax = 0;
     var sellTax = 0;
+    var url= `https://poocoin.app/tokens/${tokenOut}`;
 
     switch (pairToken) {
       case "bnb":
@@ -900,7 +982,7 @@ async function buyToken(address, pair, autotrading) {
           });
 
           console.log("\nApproved Done");
-          await sleep(5000);
+          await sleep(8000);
 
           let tx =
             await pancakeswapContract.swapExactTokensForTokensSupportingFeeOnTransferTokens(
@@ -965,17 +1047,17 @@ async function buyToken(address, pair, autotrading) {
             amountToBuy,
             tokenIn,
             percentToSellUpper,
-            percentToSellLower
+            percentToSellLower,
+            url
           );
         }
 
         if (auto == true) {
-          var urlOpen = `https://poocoin.app/tokens/${tokenOut}`;
-          await open(urlOpen);
+          await open(url);
         }
 
-        var urlOpen = `https://poocoin.app/tokens/${tokenOut}`;
-        successfulBuy(contractName, urlOpen, bot);
+        successfulBuy(contractName, bot);
+        await sleep(5000);
         inTransaction = false;
         insideBuy = false;
       }
@@ -1048,7 +1130,6 @@ async function sellToken(address) {
 
       if (tokenIn == wbnbAddress) {
         var loopApprove = true;
-        var fourTimes = 0;
 
         while (loopApprove) {
           try {
@@ -1065,10 +1146,10 @@ async function sellToken(address) {
           }
         }
 
-        while (fourTimes < 4) {
           try {
             selling(contractName, bot);
-            await sleep(5000);
+            await sleep(8000);
+            var nonce = await getNonce();
             var tx =
               await pancakeswapContract.swapExactTokensForETHSupportingFeeOnTransferTokens(
                 amountIn,
@@ -1079,30 +1160,25 @@ async function sellToken(address) {
                 {
                   gasLimit: gasLimit,
                   gasPrice: gasPrice,
-                  nonce: await getNonce(),
+                  nonce: nonce,
                 }
               );
             const receipt = await tx.wait();
             console.log("Transaction receipt");
             console.log(receipt);
             continueSelling = true;
-            fourTimes = 100; //BREAK LOOP
           } catch (err) {
             console.log(err);
             console.log(`\nUNABLE TO SELL ${contractName}...`);
             unableToSell(contractName, bot);
-            fourTimes++;
-            if (fourTimes >= 4) {
-              await remove(contractName);
-              inTransaction = false;
-              insideSell = false;
-            }
+            inTransaction = false;
+            insideSell = false;
+            
           }
-        }
+        
       }
 
       if (tokenIn == usdtAddress) {
-        var fourTimes = 0;
         var loopApprove = true;
 
         while (loopApprove) {
@@ -1121,10 +1197,10 @@ async function sellToken(address) {
           }
         }
 
-        while (fourTimes < 4) {
           try {
             selling(contractName, bot);
-            await sleep(5000);
+            await sleep(8000);
+            var nonce = await getNonce();
             let tx =
               await pancakeswapContract.swapExactTokensForTokensSupportingFeeOnTransferTokens(
                 amountIn,
@@ -1135,26 +1211,22 @@ async function sellToken(address) {
                 {
                   gasLimit: gasLimit,
                   gasPrice: gasPrice,
-                  nonce: await getNonce(),
+                  nonce: nonce,
                 }
               );
             const receipt = await tx.wait();
             console.log("Transaction receipt");
             console.log(receipt);
             continueSelling = true;
-            fourTimes = 100; //BREAK LOOP
           } catch (err) {
             console.log(err);
             console.log(`\nUNABLE TO SELL ${contractName}...`);
             unableToSell(contractName, bot);
-            fourTimes++;
-            if (fourTimes >= 4) {
-              await remove(contractName);
-              inTransaction = false;
-              insideSell = false;
-            }
+            inTransaction = false;
+            insideSell = false;
+            
           }
-        }
+        
       }
 
       if (continueSelling == true) {
@@ -1232,7 +1304,7 @@ async function sellHalfToken(address) {
     insideSell = false;
 
     if (inTransaction == false && allowSell == true) {
-      console.log(`\nSELLING HALF OF "${contractName}". PLEASE WAIT`);
+      console.log(`\nSELLING 1/3 OF "${contractName}". PLEASE WAIT`);
       inTransaction = true;
       try {
         for (var i = 0; i < walletNamesArr.length; i++) {
@@ -1242,12 +1314,13 @@ async function sellHalfToken(address) {
               walletBalanceArr[i],
               walletDecimalsArr[i]
             );
-            var balance2 = balance / 3;
+            console.log(balance);
+            var balance2 = (balance / 3).toFixed(walletDecimalsArr[i]);
             walletBalance = ethers.utils.parseUnits(
               balance2.toString(),
               walletDecimalsArr[i]
             );
-
+            console.log(balance2)
             amountBought = amountBoughtArr[i];
             tokenIn = liquidityUsedArr[i];
           }
@@ -1290,7 +1363,8 @@ async function sellHalfToken(address) {
         
           try {
             selling(contractName, bot);
-            await sleep(5000);
+            await sleep(8000);
+            var nonce = await getNonce();
             var tx =
               await pancakeswapContract.swapExactTokensForETHSupportingFeeOnTransferTokens(
                 amountIn,
@@ -1301,7 +1375,7 @@ async function sellHalfToken(address) {
                 {
                   gasLimit: gasLimit,
                   gasPrice: gasPrice,
-                  nonce: await getNonce(),
+                  nonce: nonce,
                 }
               );
             const receipt = await tx.wait();
@@ -1342,7 +1416,8 @@ async function sellHalfToken(address) {
 
           try {
             selling(contractName, bot);
-            await sleep(5000);
+            await sleep(8000);
+            var nonce = await getNonce();
             let tx =
               await pancakeswapContract.swapExactTokensForTokensSupportingFeeOnTransferTokens(
                 amountIn,
@@ -1353,7 +1428,7 @@ async function sellHalfToken(address) {
                 {
                   gasLimit: gasLimit,
                   gasPrice: gasPrice,
-                  nonce: await getNonce(),
+                  nonce: nonce,
                 }
               );
             const receipt = await tx.wait();
@@ -1399,11 +1474,11 @@ async function sellHalfToken(address) {
           )} ${symbol}`
         );
         console.log(
-          `Previous transaction is: ${amountBought} ${symbol}. Percentage for selling is ${Number(
+          `Previous transaction is: ${amountBought} ${symbol}. Percentage for selling is ${Math.abs(Number(
             ((ethers.utils.formatUnits(amounts[1], 18) - amountBought) /
               amountBought) *
               100
-          ).toFixed(2)} %`
+          ).toFixed(2))} %`
         );
         //PROFIT IN WBNB
         var profitwbnb = Number(ethers.utils.formatUnits(
@@ -1414,16 +1489,16 @@ async function sellHalfToken(address) {
         //PROFIT
         profit =
           profit +
-          ((ethers.utils.formatUnits(amounts[1], 18) - amountBought) /
+          Math.abs(((ethers.utils.formatUnits(amounts[1], 18) - amountBought) /
             amountBought) *
-            100;
+            100);
 
-        await halfBalance(contractName, newTokenAmount, profitwbnb);
+        await halfBalance(contractName, newTokenAmount, profitwbnb, profit);
 
         try {
           bot.sendMessage(
             chatId,
-            `Successfully sold half tokens of ${contractName}`
+            `Successfully sold 1/3 tokens of ${contractName}`
           );
         } catch (error) {}
 
@@ -1437,7 +1512,9 @@ async function sellHalfToken(address) {
 }
 
 async function loadingCryptoBot(){
+
   console.log("Loading crypto bot")
+
   bot.onText(/\/buy (.+) (.+)/, async (msg, match) => {
     try {
       var toBuyAddress = match[1];
@@ -1495,7 +1572,6 @@ async function loadingCryptoBot(){
   });
 
   bot.onText(/\/stat/, async (msg) => {
-    console.log("+++++INSIDE STAT+++++")
     try {
       try {
             bot.sendMessage(
@@ -1785,41 +1861,35 @@ async function loadingCryptoBot(){
   });
 
   bot.onText(/\/sample/, async (msg, match) => {
+
+    var sampleBalance = 576518333320499
+    var balance = ethers.utils.formatUnits(
+              sampleBalance,
+              9)
+    console.log(balance);
+
+    var balance2 = (balance / 3).toFixed(9);
+    
+    var walletBalance = ethers.utils.parseUnits(
+              balance2.toString(),
+              9
+            );
+            console.log(walletBalance)
+  });
+
+  bot.onText(/\/url/, async (msg, match) => {
     try {
-      var balance = ethers.utils.formatUnits(
-        walletBalanceArr[0],
-        walletDecimalsArr[0]
-      );
-      var balance2 = balance / 2;
-      var convertBackToBigNumber = ethers.utils.parseUnits(
-        balance2.toString(),
-        walletDecimalsArr[0]
-      );
-      console.log(`Before Balance: ${balance}`);
-      console.log(`After Balance: ${balance2}`);
-      console.log(
-        `Parse before balance: ${ethers.utils.parseUnits(
-          balance.toString(),
-          walletDecimalsArr[0]
-        )}`
-      );
-      console.log(
-        `Parse after balance: ${ethers.utils.parseUnits(
-          balance2.toString(),
-          walletDecimalsArr[0]
-        )}`
-      );
-      console.log("\n", walletBalanceArr[0]);
+      var msg = "";
+      var no = 0;
+      for(var i = 0 ; i < coinURL.length; i++){
+        no++;
+        msg += no + ". " + coinURL[i] +"\n"  ;
+      }
 
-      var bignumber = {
-        type: "BigNumber",
-        hex: convertBackToBigNumber._hex,
-      };
-
-      var samplearr = [];
-      samplearr.push(bignumber);
-      console.log(samplearr[0]);
-    } catch (error) {"Error in bot /sample"}
+      bot.sendMessage(chatId, msg);
+    } catch (error) {
+      console.log(`Error in bot /url`);
+    }
   });
 }
 
@@ -1891,13 +1961,17 @@ async function monitorCoins() {
 
             var name = walletNamesArr[i];
             var address = walletAddressesArr[i];
+            var compareBalance = walletBalanceArr[i];
+            
             var balance = Number(
               ethers.utils.formatUnits(
                 walletBalanceArr[i],
                 walletDecimalsArr[i]
               )
             ).toFixed(2);
+
             var amountBought = amountBoughtArr[i];
+            var profitPerCoinOwned = profitPerCoinArr[i];
             var percent = parseFloat(
               Number(
                 ((ethers.utils.formatUnits(amounts[1], 18) -
@@ -1915,7 +1989,7 @@ async function monitorCoins() {
             console.log(
               `${
                 i + 1
-              }. ${name} --> ${balance} --> SELL FOR: ${percent}% BT:${buyTax}% ST:${sellTax}%--> AMOUNT: ${amountBought}\n ADD: ${address} / UP:${upperPercent}% LP:${lowerPercent}%`
+              }. ${name} --> ${balance} --> SELL FOR: ${percent}% BT:${buyTax}% ST:${sellTax}%--> AMOUNT: ${amountBought}\n PROFIT: ${profitPerCoinOwned} / UP:${upperPercent}% LP:${lowerPercent}%`
             );
 
             if (telegramPercentages.length < walletNamesArr.length) {
@@ -1923,13 +1997,13 @@ async function monitorCoins() {
               telegramPercentages.push(percent);
             }
 
-            if (totalUpperPercent > upperPercent && inTransaction == false && insideSell == false) {
+            if (totalUpperPercent > upperPercent && percent != Infinity && inTransaction == false && insideSell == false) {
               insideSell = true;
               await sellHalfToken(address);
             }
           }
         }
-       
+
           notifUserWallet(
           walletNamesArr,
           telegramPercentages,
@@ -1953,6 +2027,8 @@ async function monitorCoins() {
         console.log(
           `\n=============================================================`
         );
+
+        await checkBalance();
       }
     }, 30000);
   } catch (error) {
@@ -2033,6 +2109,13 @@ const main = async () => {
   monitorCoins();
   getTransactionOfUser();
 
-};
-
+  setInterval(async () => {
+  try{
+    await bot.stopPolling();
+    await bot.startPolling();
+    }catch(err){
+      console.log("Error in start and stop polling")}
+  }, 20000)
+}
+  
 main();
