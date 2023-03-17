@@ -1,56 +1,43 @@
 {
   "wallet": {
     "name": [
-      "SHIBCAT",
-      "SHIB GPT4"
+      "Easter Doge"
     ],
     "balance": [
       {
         "type": "BigNumber",
-        "hex": "0x021e7e35ff2dabe1cf704ece04"
-      },
-      {
-        "type": "BigNumber",
-        "hex": "0x015d8f6c4f3377"
+        "hex": "0x895982e352fe65ef59"
       }
     ],
     "address": [
-      "0xd5ff3786ce4a75156d27ab026eb04c9ed53b365f",
-      "0x3abda77d6ce4271a4b1e0e83ae5a4ab3d00e41f7"
+      "0x0f111faadb29d3c1daaff588ccd46a08deabe47d"
     ],
     "decimal": [
-      18,
       9
     ],
     "amountbought": [
-      0.107,
-      0.04
+      0.03
     ],
     "liquidityused": [
-      "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
       "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
     ],
     "upper": [
-      30,
       30
     ],
     "lower": [
-      -15,
       -15
     ],
     "profitpercoin": [
-      0.05,
-      0.023
+      0.014
     ],
     "coinurl": [
-      "https://poocoin.app/tokens/0xd5ff3786ce4a75156d27ab026eb04c9ed53b365f",
-      "https://poocoin.app/tokens/0x3abda77d6ce4271a4b1e0e83ae5a4ab3d00e41f7"
+      "https://poocoin.app/tokens/0x0f111faadb29d3c1daaff588ccd46a08deabe47d"
     ],
-    "profit": 40.8788976768582
+    "profit": 74.7753181464066
   },
   "upperpercent": 30,
   "lowerpercent": -15,
-  "howmuch": 0.04,
+  "howmuch": 0.03,
   "stop": true,
   "sell": true
 }

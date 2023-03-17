@@ -26,7 +26,7 @@ const token = process.env.BOT_TOKEN;
 const chatId = process.env.CHAT_ID;
 const group1 = process.env.GROUP_1;
 const msTime = 5000;
-let bot = new TelegramBot(token, { polling: true});
+const bot = new TelegramBot(token, { polling: true});
 
 //AI GENERATON
 const openAi_KEY = process.env.AI_API_KEY;
@@ -584,19 +584,17 @@ async function changeBalance(name, balance, newAmount) {
         if (error) {
           console.log(error);
         } else {
-          var previousAmountBought = parseFloat(data.wallet.amountbought);
-
-          var totalAmount = (
-            previousAmountBought + parseFloat(newAmount)
-          ).toString();
-
+  
           for (var i = 0; i < walletNamesArr.length; i++) {
             if (name == walletNamesArr[i]) {
+              var previousAmountBought = parseFloat(data.wallet.amountbought[i]);
+
+              var totalAmount = previousAmountBought + parseFloat(newAmount)
               walletBalanceArr[i] = balance;
-              amountBoughtArr[i] = totalAmount;
+              amountBoughtArr[i] = Number(totalAmount).toFixed(3);
 
               data.wallet.balance[i] = balance;
-              data.wallet.amountbought[i] = totalAmount;
+              data.wallet.amountbought[i] = Number(totalAmount).toFixed(3);
             }
           }
 
@@ -766,7 +764,7 @@ async function updateAll() {
 }
 
 async function checkBalance(){
-  
+     
       for(var i = 0; i < walletBalanceArr.length; i++){
 
         var address = walletAddressesArr[i];
@@ -775,6 +773,7 @@ async function checkBalance(){
         var tokenBalanceOfUser;
         var contractName;
         var loop_getBalance = true;
+        var array = i;
 
         while(loop_getBalance){
           try {
@@ -783,7 +782,7 @@ async function checkBalance(){
              tokenBalanceOfUser = await tokenContract.balanceOf(receiver);
              loop_getBalance = false;
           } catch (error) {
-            console.log("Error in loop_getBalance in checkBalance function")
+            console.log("Error in loop_getBalance in checkBalance function");
           }
         }
 
@@ -798,8 +797,8 @@ async function checkBalance(){
                   if (error) {
                     console.log(error);
                   } else {
-                    walletBalanceArr[arrayNo] = tokenBalanceOfUser;
-                    data.wallet.balance[arrayNo] = tokenBalanceOfUser;
+                    walletBalanceArr[array] = tokenBalanceOfUser;
+                    data.wallet.balance[array] = tokenBalanceOfUser;
 
                     fs.writeFile(
                       "/home/leeharuto86/TrailStopLossBot/wallet.json",
@@ -808,7 +807,9 @@ async function checkBalance(){
                         if (err) {
                           console.log(err);
                         } else {
-                          console.log(`Change new balance of ${contractName}`)
+                          var msg = `Change new balance of token no. ${array + 1}.`;
+                          console.log(msg);
+                          bot.sendMessage(chatId, msg);
                         }
                       }
                     );
@@ -822,6 +823,7 @@ async function checkBalance(){
           } else if (balance1 == 0){
             await remove(contractName);
           }
+        await sleep(2000);
       }
 }
 
@@ -1511,6 +1513,43 @@ async function sellHalfToken(address) {
   }
 }
 
+async function changeUpperPercent(arrayNo, percentChange){
+  try {
+    readJson(
+      "/home/leeharuto86/TrailStopLossBot/wallet.json",
+      (error, data) => {
+        if (error) {
+          console.log(error);
+        } else {
+          var noOfTokens = walletNamesArr.length;
+
+          if (arrayNo < noOfTokens){
+          upperPercentArr[arrayNo] = percentChange;
+          data.wallet.upper[arrayNo] = percentChange;
+
+          fs.writeFile(
+            "/home/leeharuto86/TrailStopLossBot/wallet.json",
+            JSON.stringify(data, null, 2),
+            (err) => {
+              if (err) {
+                console.log(err);
+              } else {
+                console.log(
+                  `Successfully change upper percent of array no. ${arrayNo}`
+                );
+                bot.sendMessage(chatId, `Changed the upper percent of ${walletNamesArr[arrayNo]} to ${percentChange}%`)
+              }
+            }
+          );
+        }
+        }
+      }
+    );
+  } catch (error) {
+    console.log(`Error in changeUpperPercent function`);
+  }
+}
+
 async function loadingCryptoBot(){
 
   console.log("Loading crypto bot")
@@ -1860,23 +1899,6 @@ async function loadingCryptoBot(){
     }
   });
 
-  bot.onText(/\/sample/, async (msg, match) => {
-
-    var sampleBalance = 576518333320499
-    var balance = ethers.utils.formatUnits(
-              sampleBalance,
-              9)
-    console.log(balance);
-
-    var balance2 = (balance / 3).toFixed(9);
-    
-    var walletBalance = ethers.utils.parseUnits(
-              balance2.toString(),
-              9
-            );
-            console.log(walletBalance)
-  });
-
   bot.onText(/\/url/, async (msg, match) => {
     try {
       var msg = "";
@@ -1891,12 +1913,43 @@ async function loadingCryptoBot(){
       console.log(`Error in bot /url`);
     }
   });
+
+  bot.onText(/\/change (.+) (.+)/, async (msg, match) => {
+    try {
+      var arrayNo = parseInt(match[1]) - 1;
+      var percentChange = parseInt(match[2]);
+
+      if (percentChange && arrayNo > -1) {
+        if(percentChange >= 20 && percentChange < 100 && arrayNo > -1 && arrayNo <= 20){
+        await changeUpperPercent(arrayNo, percentChange)
+      }
+      }
+    } catch (error) {
+      console.log(`Error in bot /buy`);
+    }
+  });
+
+  bot.onText(/\/sample (.+) (.+)/, async (msg, match) => {
+    try {
+      var arrayNo = parseInt(match[1]) - 1;
+      var percentChange = parseInt(match[2]);
+
+      if(arrayNo > 0 && arrayNo < 100 && percentChange > 0 && percentChange < 100){
+      console.log(arrayNo);
+      console.log(percentChange)
+      }
+      
+    } catch (error) {
+      console.log(`Error in bot /buy`);
+    }
+  });
 }
 
 async function monitorCoins() {
   try {
     setInterval(async () => {
       if (inTransaction == false && removeInProgress == false) {
+        await checkBalance();
         console.log(
           `\n=============================================================`
         );
@@ -2030,7 +2083,7 @@ async function monitorCoins() {
 
         await checkBalance();
       }
-    }, 30000);
+    }, 15000);
   } catch (error) {
     console.log("Error in monitorCoins");
   }
